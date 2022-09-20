@@ -3,6 +3,7 @@ from cmd import PROMPT
 from distutils.command.build_scripts import first_line_re
 from nis import cat
 from operator import indexOf
+from re import L
 import flask
 import json
 import requests
@@ -31,7 +32,7 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-UPLOAD_FOLDER = '/tmp'
+UPLOAD_FOLDER = 'tmp'
 
 
 app = flask.Flask(__name__)
@@ -39,6 +40,7 @@ app.config["DEBUG"] = True
 
 @app.route('/', methods=['GET'])
 def home():
+    #check if a req-responses folder exists, if not create it
     #create a table with the following columns:
     #model, prompt, max_tokens, temperature, response
     #prompt is a text field
@@ -78,7 +80,8 @@ def home():
     html += "<input type='number' id='max_tokens' name='max_tokens'>"
     html += "<br>"
     html += "<label for='temperature'>Temperature:</label>"
-    html += "<input type='number' id='temperature' name='temperature'>"
+    #temperature should be a float from 0 to 1
+    html += "<input type='number' id='temperature' name='temperature' step='0.01' min='0' max='1'>"
     html += "<br>"
     html += "<input type='submit' value='Submit'>"
     html += "</form>"
@@ -91,7 +94,7 @@ def home():
 def log_page():
     #use the flask table to display the log file
     #use the flask table to display the json files
-    table = create_flask_table()
+    table = create_flask_table_with_json_files()
     #add css to the table
     html = "<html>"
     html += "<head>"
@@ -114,7 +117,55 @@ def log_page():
     html += "</body>"
     html += "</html>"
     return html
- 
+
+def extract_text_from_json_file(file):
+    try:
+        with open(file, 'r') as f:
+            data = json.load(f)
+            return data['choices'][0]['text']
+    except:
+        return 
+def extract_keyvalue_from_json_file(file, key):
+    try:
+        with open(file, 'r') as f:
+            data = json.load(f)
+            return data[key]
+    except:
+        return
+def get_prompt_from_log_file(created_at):
+    with open('log.txt', 'r') as f:
+        for line in f:
+            if created_at in line:
+                return line.split("|")[1].split("|")[0]
+    #2022_09_16_13_47_00|test|{'id': 'cmpl-5r45tDiXUNNwfFxzMF71rbI8xYjgU', 'object': 'text_completion', 'created': 1663328805, 'model': 'text-ada-001', 'choices': [{'text': '\n\nHello World!', 'index': 0, 'logprobs': None, 'finish_reason': 'length'}], 'usage': {'prompt_tokens': 5, 'completion_tokens': 5, 'total_tokens': 10}}
+
+
+def create_flask_table_with_json_files():
+    table = "<table>"
+    table += "<tr>"
+    table += "<th>File</th>"
+    table += "<th>Text</th>"
+    table += "</tr>"
+    #for each file in subdir tmp
+    for file in os.listdir('tmp'):
+        if file.endswith(".json"):
+            table += "<tr>"
+            table += "<td>" + file + "</td>"
+            #get created from json file
+            created_at = extract_keyvalue_from_json_file('tmp/' + file, 'created')
+            #get prompt from log file
+            prompt = get_prompt_from_log_file(str(created_at))
+            #get text from json file
+            table += "<td>{}</td>".format(created_at)
+            table += "<td>" + prompt + "</td>"
+            table += "<td>" + str(extract_text_from_json_file('tmp/' + file)) + "</td>"
+            table += "</tr>"
+    table += "</table>"
+
+
+    return table
+
+#depreceated function to create a flask table with the log file        
 def create_flask_table():
     items = []
     
@@ -129,7 +180,6 @@ def create_flask_table():
         timestamp = line[0]
         prompt = line[1]
         response = line[2]
-        #text_completion', 'created': 1663402248, 'model': 'text-davinci-002', 'choices': [{'text': ' My name is Sonia.', 'index': 0, 'logprobs': None, 'finish_reason': 'length'}], 'usage': {'prompt_tokens': 2, 'completion_tokens': 5, 'total_tokens': 7}
         text_response = response.split("'text': '")
         item = Item(prompt, response, timestamp,text_response)
         items.append(item)
@@ -137,20 +187,6 @@ def create_flask_table():
     table = ItemTable(items)
     html += table.__html__()
     return html
-    # for file in os.listdir():
-    #     openai_log = open("log.txt", "r")
-    #     if file.endswith(".json"):
-    #         with open(os.path.join("", file), "r") as json_file:
-    #             if "error" in json_file.read():
-    #                 continue
-    #             data = json.load(json_file)
-    #             prompt = "None"
-    #             for line in openai_log:
-    #                 if json_file.name.replace("_log.json","") in line:
-    #                     prompt = line[indexOf(line, "|")+1:indexOf(line,"{")-1]
-    #             items.append(Item(prompt, data.get("choices")[0].get("text").replace("\n",""), json_file.name))
-    #     openai_log.close()
-    # table = ItemTable(items)
 
 
 #answer the api call
@@ -167,7 +203,7 @@ def api():
     model = request.form.get('model').strip()
     prompt = request.form.get('prompt').strip()
     max_tokens = int(request.form.get('max_tokens'))
-    temperature = int(request.form.get('temperature'))
+    temperature = float(request.form.get('temperature'))
     #check the data
     if model == None or prompt == None or max_tokens == None or temperature == None:
         return "Invalid data"
