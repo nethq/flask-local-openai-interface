@@ -12,6 +12,7 @@ import os
 from flask import Flask, request, redirect, url_for
 from werkzeug.utils import secure_filename
 import flask_table
+
 class ItemTable(flask_table.Table):
     classes = ['table', 'table-striped', 'table-hover']
     prompt = flask_table.Col('Prompt')
@@ -25,14 +26,7 @@ class Item(object):
         self.text_response = text_response
         self.timestamp = timestamp
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = '/tmp'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
-ALLOWED_EXTENSIONS = set(['txt'])
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-UPLOAD_FOLDER = 'tmp'
+data_dir = "data/"
 
 
 app = flask.Flask(__name__)
@@ -133,7 +127,7 @@ def extract_keyvalue_from_json_file(file, key):
     except:
         return
 def get_prompt_from_log_file(created_at):
-    with open('log.txt', 'r') as f:
+    with open(data_dir+'log.txt', 'r') as f:
         for line in f:
             if created_at in line:
                 return line.split("|")[1].split("|")[0]
@@ -146,19 +140,21 @@ def create_flask_table_with_json_files():
     table += "<th>File</th>"
     table += "<th>Text</th>"
     table += "</tr>"
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
     #for each file in subdir tmp
-    for file in os.listdir('tmp'):
+    for file in os.listdir(data_dir):
         if file.endswith(".json"):
             table += "<tr>"
             table += "<td>" + file + "</td>"
             #get created from json file
-            created_at = extract_keyvalue_from_json_file('tmp/' + file, 'created')
+            created_at = extract_keyvalue_from_json_file(data_dir + file, 'created')
             #get prompt from log file
             prompt = get_prompt_from_log_file(str(created_at))
             #get text from json file
             table += "<td>{}</td>".format(created_at)
             table += "<td>" + prompt + "</td>"
-            table += "<td>" + str(extract_text_from_json_file('tmp/' + file)) + "</td>"
+            table += "<td>" + str(extract_text_from_json_file(data_dir + file)) + "</td>"
             table += "</tr>"
     table += "</table>"
 
@@ -171,7 +167,7 @@ def create_flask_table():
     
     #auto refresh the page every 5 seconds
     html = "<meta http-equiv='refresh' content='5'>"
-    openai_log = open("log.txt", "r")
+    openai_log = open(data_dir+"log.txt", "r")
     for line in openai_log:
         if "error" in line:
             continue
@@ -236,14 +232,14 @@ def curl_request(key,model, prompt, max_tokens, temperature):
     return response.json()
 
 def write_response_to_log_file(response,prompt):
-    with open('log.txt', 'a') as f:
+    with open(data_dir+'log.txt', 'a') as f:
         timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         f.write(timestamp+"|{}|".format(str(prompt))+str(response)+"\n")
 
 def write_to_json_file(response):
     timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     timestamp = timestamp.replace(" ", "_").replace(":", "-").replace("-", "_")
-    with open('{}_log.json'.format(timestamp), 'a') as f:
+    with open(data_dir+'{}_log.json'.format(timestamp), 'a') as f:
         json.dump(response, f)
 
 app.run()
