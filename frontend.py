@@ -1,16 +1,9 @@
-from cgitb import text
-from cmd import PROMPT
-from distutils.command.build_scripts import first_line_re
-from nis import cat
-from operator import indexOf
-from re import L
 import flask
 import json
 import requests
 import datetime
 import os
 from flask import Flask, request, redirect, url_for
-from werkzeug.utils import secure_filename
 import flask_table
 
 class ItemTable(flask_table.Table):
@@ -66,15 +59,14 @@ def home():
     html += "<option value='babbage'>Babbage</option>"
     html += "<option value='ada'>Ada</option>"
     html += "</select>"
-    html += "<br>"
+    html += "<br><br>"
     html += "<label for='prompt'>Prompt:</label>"
-    html += "<input type='text' id='prompt' name='prompt'>"
-    html += "<br>"
+    html += "<input type='text' style='width:60%;height:60px;word-wrap: break-word;margin:-3px;border:2px inset #eee' id='prompt' name='prompt'>"
+    html += "<br><br>"
     html += "<label for='max_tokens'>Max Tokens:</label>"
     html += "<input type='number' id='max_tokens' name='max_tokens'>"
-    html += "<br>"
+    html += "<br><br>"
     html += "<label for='temperature'>Temperature:</label>"
-    #temperature should be a float from 0 to 1
     html += "<input type='number' id='temperature' name='temperature' step='0.01' min='0' max='1'>"
     html += "<br>"
     html += "<input type='submit' value='Submit'>"
@@ -139,24 +131,21 @@ def create_flask_table_with_json_files():
     table += "<tr>"
     table += "<th>File</th>"
     table += "<th>Text</th>"
-    table += "</tr>"
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
-    #for each file in subdir tmp
+    #get a sorted list of all json files
+    files_createdat = {}
     for file in os.listdir(data_dir):
         if file.endswith(".json"):
-            table += "<tr>"
-            table += "<td>" + file + "</td>"
-            #get created from json file
-            created_at = extract_keyvalue_from_json_file(data_dir + file, 'created')
-            #get prompt from log file
-            prompt = get_prompt_from_log_file(str(created_at))
-            #get text from json file
-            table += "<td>{}</td>".format(created_at)
-            table += "<td>" + prompt + "</td>"
-            table += "<td>" + str(extract_text_from_json_file(data_dir + file)) + "</td>"
-            table += "</tr>"
+            files_createdat[file] = extract_keyvalue_from_json_file(data_dir+file, 'created')
+    files_createdat = dict(sorted(files_createdat.items(), key=lambda item: item[1], reverse=True))
+    for file in files_createdat:
+        table += "<tr>"
+        table += "<td>"+file+"</td>"
+        table += "<td>"+str(extract_text_from_json_file(data_dir+file)).replace("\\n","<br>")+"</td>"
+        table += "</tr>"
     table += "</table>"
+
 
 
     return table
