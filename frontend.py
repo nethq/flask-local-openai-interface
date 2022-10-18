@@ -16,7 +16,12 @@ data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), data_dir_nam
 
 @app.route('/', methods = ['GET'])
 def home():
-        return render_template('index.html')
+    if not os.path.exists("openai-key.env"):
+        #create a file
+        with open("openai-key.env", "w") as f:
+            f.write("OPENAI_API_KEY=<YOUR_OPENAI_API_KEY>")
+            return "Please add your OpenAI API key to the openai-key.env file"
+    return render_template('index.html')
     
 def openai_api_call(model, prompt, max_tokens, temperature):
     #create the request body
@@ -53,8 +58,17 @@ def write_to_json_file(response):
 def log():
     #create a flask table with all json files
     table = ""
+    with open('templates/head.txt', 'r') as f:
+        for line in f:
+            table += line
+    with open('templates/menu.txt', 'r') as f:
+        for line in f:
+            table += line
     table += "<style>table, th, td {border: 1px solid black;}</style>"
     table += "<table><thead><tr><th>File</th><th>Created</th><th>Model</th><th>Prompt</th><th>Response</th></tr></thead><tbody>"
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+        return table + "</tbody></table>"
     #get a list of files in the data directory
     files = os.listdir(data_dir)
     #sort the files in descending order
@@ -62,22 +76,26 @@ def log():
     #loop through the files
 
     for file in files:
-        if file.endswith(".json"):
-            #get data from file
-            #create a table row
-            #get the model name , prompt and response from the json file
-            with open(data_dir+'/'+file, 'r') as f:
-                table += "<tr>"
-                data = json.load(f)
-                model = data['model']
-                response = data['choices'][0]['text']
-                created = data['created']
-                table += "<td>{}</td>".format(file)
-                table += "<td>{}</td>".format(created)
-                table += "<td>{}</td>".format(model)
-                table += "<td>{}</td>".format(find_prompt_from_created(created))
-                table += "<td>{}</td>".format(response)
-                table += "</tr>"
+        try:
+                
+            if file.endswith(".json"):
+                #get data from file
+                #create a table row
+                #get the model name , prompt and response from the json file
+                with open(data_dir+'/'+file, 'r') as f:
+                    table += "<tr>"
+                    data = json.load(f)
+                    model = data['model']
+                    response = data['choices'][0]['text']
+                    created = data['created']
+                    table += "<td>{}</td>".format(file)
+                    table += "<td>{}</td>".format(created)
+                    table += "<td>{}</td>".format(model)
+                    table += "<td>{}</td>".format(find_prompt_from_created(created))
+                    table += "<td>{}</td>".format(response)
+                    table += "</tr>"
+        except:
+            table += "<td>{}</td><td></td><td></td><td></td><td>{}</td>".format(file,data)
     table += "</tbody></table>"
     return table
 

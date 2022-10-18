@@ -11,6 +11,18 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
 </head>
 <body>
+    <!--Menu-->
+    <nav class="navbar navbar-inverse">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="#">OpenAI</a>
+            </div>
+            <ul class="nav navbar-nav">
+                <li><a href="/">Home</a></li>
+                <li><a href="/log">Log</a></li>
+            </ul>
+        </div>
+    </nav>
     <div class="container">
         <div class="jumbotron">
             <h1>OpenAI</h1>
@@ -44,9 +56,11 @@
             <button type="submit" class="btn btn-default">Submit</button>
         </form>
         <!--If a response is received from the open-ai-api display the response-->
-            <div class="panel panel-default">
-                <div class="panel-heading">Response</div>
-                <div class="panel-body">
-                      
-                </div>
+        {% if response %}
+        <div class="jumbotron">
+            <h1>Response</h1>
+            <p>{{response}}</p>
+        </div>
+        {% endif %}
+    </div>
 </head>
