@@ -5,6 +5,7 @@ import openai
 import dotenv
 import json
 import requests
+import sys
 
 # curl https://api.openai.com/v1/completions \
 #   -H 'Content-Type: application/json' \
@@ -60,7 +61,7 @@ def main():
         model = "text-ada-001"
     else:
         print("Invalid model")
-        exit()
+        sys.exit()
     print("Reading the prompt until EOF (Ctrl+D)")
     prompt = ""
     while True:
