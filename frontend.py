@@ -44,6 +44,11 @@ def openai_api_call(model, prompt, max_tokens, temperature):
     return response.json()['choices'][0]['text']
 
 def write_response_to_log_file(response,prompt):
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+    if not os.path.exists(data_dir+'/log.txt'):
+        with open(data_dir+'/log.txt', 'w') as f:
+            f.write("timestamp|prompt|response")
     with open(data_dir+'/log.txt', 'a') as f:
         timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         f.write(timestamp+"|{}|".format(str(prompt))+str(response)+"\n")
@@ -74,7 +79,7 @@ def log():
     #sort the files in descending order
     files.sort(reverse=True)
     #loop through the files
-
+    data = ""
     for file in files:
         try:
                 
@@ -109,18 +114,16 @@ def find_prompt_from_created(created):
 
 @app.route('/api', methods=['POST'])
 def api():
-    import pyoai
-    import dotenv
     #get the form data
     #call the openai api
     #write the response to a log file
     #write the response to a json file
     #return the response to the frontend
-    key = dotenv.get_key("openai-key.env","OPENAI_API_KEY")
-    model = request.form.get('model').strip()
-    prompt = request.form.get('prompt').strip()
-    max_tokens = int(request.form.get('max_tokens'))
-    temperature = float(request.form.get('temperature'))
+    key = open("openai-key.env", "r").read().split("=")[1].strip()
+    model = str(request.form.get('model')).strip()
+    prompt = str(request.form.get('prompt')).strip()
+    max_tokens = int(str(request.form.get('max_tokens')))
+    temperature = float(str(request.form.get('temperature')))
     model = model.lower()
     if model == "davinci":
         model = "text-davinci-002"
